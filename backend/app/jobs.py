@@ -1,33 +1,24 @@
 """Scheduled jobs container: same image as the API, different entrypoint.
 
-Runs timeout sweeps and settlement under a Redis distributed lock so it is
-safe to run alongside (or instead of) replicas. Usage: python -m app.jobs
+Runs timeout sweeps and settlement. Single instance only — if replicas are
+ever needed, reintroduce a distributed lock here. Usage: python -m app.jobs
 """
 
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
-import redis.asyncio as redis
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.db import SessionLocal
-from app.core.redis_client import get_redis
 from app.modules.common.enums import OrderStatus
 from app.modules.orders import service as order_service
 from app.modules.orders.models import Order
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("jobs")
-
-LOCK_KEY = "jobs:leader"
-LOCK_TTL = 90
-
-
-async def _acquire_lock(r: redis.Redis) -> bool:
-    return bool(await r.set(LOCK_KEY, "1", nx=True, ex=LOCK_TTL))
 
 
 async def sweep_payment_timeouts() -> None:
@@ -95,19 +86,17 @@ async def sweep_settlements() -> None:
             log.info("settlement sweep settled %d orders", len(orders))
 
 
-async def run_locked(job) -> None:
-    r = get_redis()
-    if await _acquire_lock(r):
-        try:
-            await job()
-        except Exception:
-            log.exception("job %s failed", job.__name__)
+async def run_guarded(job) -> None:
+    try:
+        await job()
+    except Exception:
+        log.exception("job %s failed", job.__name__)
 
 
 async def main() -> None:
     scheduler = AsyncIOScheduler()
     for job in (sweep_payment_timeouts, sweep_accept_timeouts, sweep_settlements):
-        scheduler.add_job(run_locked, "interval", minutes=1, args=[job], id=job.__name__)
+        scheduler.add_job(run_guarded, "interval", minutes=1, args=[job], id=job.__name__)
     scheduler.start()
     log.info("jobs scheduler started")
     while True:

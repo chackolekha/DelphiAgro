@@ -1,6 +1,5 @@
 import uuid
 
-import redis.asyncio as redis
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
 from app.core.deps import get_current_user, require_verified
 from app.core.errors import bad_request, forbidden
-from app.core.redis_client import get_redis
+from app.core.kv import TTLStore, get_kv
 from app.core.security import gen_delivery_otp
 from app.modules.common.enums import OrderStatus, Role
 from app.modules.orders import schemas, service
@@ -53,7 +52,7 @@ async def place(
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     user: User = Depends(require_verified),
     db: AsyncSession = Depends(get_db),
-    r: redis.Redis = Depends(get_redis),
+    r: TTLStore = Depends(get_kv),
 ):
     idem = f"idem:orders:{user.id}:{idempotency_key}" if idempotency_key else None
     if idem:

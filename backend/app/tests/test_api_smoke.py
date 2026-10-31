@@ -1,16 +1,15 @@
 """End-to-end smoke test: OTP login → KYC → listing → order → pay → deliver.
 
 Runs against the real FastAPI app over httpx ASGITransport with SQLite +
-fakeredis — no external services needed.
+in-memory TTL store — no external services needed.
 """
 
-import fakeredis.aioredis
 import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.db import Base, get_db
-from app.core.redis_client import get_redis
+from app.core.kv import TTLStore, get_kv
 from app.main import app
 from app.modules.common.enums import Role, UserStatus
 from app.modules.users.models import User
@@ -24,14 +23,14 @@ async def client():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    store = TTLStore()
 
     async def _db():
         async with maker() as s:
             yield s
 
     app.dependency_overrides[get_db] = _db
-    app.dependency_overrides[get_redis] = lambda: fake_redis
+    app.dependency_overrides[get_kv] = lambda: store
 
     # seed an admin directly (lifespan doesn't run under ASGITransport)
     async with maker() as s:

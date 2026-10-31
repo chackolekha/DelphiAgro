@@ -1,7 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
 
-import redis.asyncio as redis
 from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +9,6 @@ from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.deps import get_user_by_phone
 from app.core.errors import register_exception_handlers
-from app.core.redis_client import get_redis
 from app.modules.admin.router import router as admin_router
 from app.modules.auth.router import router as auth_router
 from app.modules.catalogue.router import router as catalogue_router
@@ -74,22 +72,14 @@ def create_app() -> FastAPI:
         app.include_router(r, prefix="/api/v1")
 
     @app.get("/health")
-    async def health(db: AsyncSession = Depends(get_db), r: redis.Redis = Depends(get_redis)):
-        db_ok = redis_ok = False
+    async def health(db: AsyncSession = Depends(get_db)):
+        db_ok = False
         try:
             await db.execute(text("SELECT 1"))
             db_ok = True
         except Exception:
             log.exception("db health check failed")
-        try:
-            redis_ok = bool(await r.ping())
-        except Exception:
-            log.exception("redis health check failed")
-        return {
-            "status": "ok" if db_ok and redis_ok else "degraded",
-            "db": db_ok,
-            "redis": redis_ok,
-        }
+        return {"status": "ok" if db_ok else "degraded", "db": db_ok}
 
     return app
 

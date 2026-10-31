@@ -12,20 +12,6 @@ env:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: krishilink
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres" --health-interval 5s
-          --health-timeout 3s --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports: ["6379:6379"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,14 +25,9 @@ jobs:
         run: |
           ruff check app
           mypy app
-      - name: Migrate + test
+      - name: Test
         working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/krishilink
-          REDIS_URL: redis://localhost:6379/0
-        run: |
-          alembic upgrade head
-          pytest app/tests -x -q
+        run: pytest app/tests -x -q
 
   frontend:
     runs-on: ubuntu-latest
@@ -113,13 +94,43 @@ jobs:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          PAYMENTS_PROVIDER: ${{ secrets.PAYMENTS_PROVIDER }}
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
         run: |
           mkdir -p ~/.ssh
           echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+
+          # .env consumed by docker-compose.prod.yml (env_file) on the host.
+          # DATABASE_URL is NOT here — it lives in ~/krishilink/db.env, created
+          # once on the host, so the DB credential never touches CI/git.
+          cat > .env.deploy <<ENVEOF
+          JWT_SECRET=$JWT_SECRET
+          ENV=prod
+          OTP_DEV_ECHO=false
+          ADMIN_PHONE=$ADMIN_PHONE
+          PAYMENTS_PROVIDER=${PAYMENTS_PROVIDER:-stub}
+          RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID
+          RAZORPAY_KEY_SECRET=$RAZORPAY_KEY_SECRET
+          RAZORPAY_WEBHOOK_SECRET=$RAZORPAY_WEBHOOK_SECRET
+          PLATFORM_FEE_PCT=0.05
+          ACCEPT_WINDOW_HOURS=12
+          PAYMENT_WINDOW_MIN=15
+          DISPUTE_WINDOW_HOURS=48
+          CORS_ORIGINS=$CORS_ORIGINS
+          ENVEOF
+
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST"
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             docker-compose.prod.yml "$EC2_USER@$EC2_HOST:~/krishilink/docker-compose.yml"
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            .env.deploy "$EC2_USER@$EC2_HOST:~/krishilink/.env"
+          rm .env.deploy
           $SSH "
             set -e
             cd ~/krishilink
@@ -131,8 +142,12 @@ jobs:
           "
 
       - name: Smoke check
+        # retry loop — Neon free tier cold-starts (~1s) on first connect
         run: |
-          sleep 10
-          curl -fsS "http://${{ secrets.EC2_HOST }}/health" | grep -q '"status":"ok"' \
-            && echo "deploy healthy" \
-            || { echo "smoke check failed"; exit 1; }
+          for i in $(seq 1 12); do
+            if curl -fsS "http://${{ secrets.EC2_HOST }}/health" | grep -q '"status":"ok"'; then
+              echo "deploy healthy"; exit 0
+            fi
+            sleep 5
+          done
+          echo "smoke check failed"; exit 1

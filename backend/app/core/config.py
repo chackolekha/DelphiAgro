@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     env: str = "dev"
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/krishilink"
-    redis_url: str = "redis://localhost:6379/0"
 
     jwt_secret: str = "dev-secret-change-me"
     jwt_algo: str = "HS256"

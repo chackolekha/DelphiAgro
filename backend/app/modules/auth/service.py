@@ -1,12 +1,12 @@
 import uuid
 
 import jwt
-import redis.asyncio as redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.deps import get_user_by_phone
 from app.core.errors import AppError, bad_request
+from app.core.kv import TTLStore
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -20,7 +20,7 @@ OTP_ATTEMPTS_KEY = "otp_attempts:{}"
 OTP_RATE_KEY = "otp_rate:{}"
 
 
-async def request_otp(r: redis.Redis, phone: str) -> str | None:
+async def request_otp(r: TTLStore, phone: str) -> str | None:
     """Generate and store an OTP. Returns it only in dev-echo mode."""
     settings = get_settings()
     rate_key = OTP_RATE_KEY.format(phone)
@@ -37,7 +37,7 @@ async def request_otp(r: redis.Redis, phone: str) -> str | None:
     return otp if settings.otp_dev_echo else None
 
 
-async def verify_otp(db: AsyncSession, r: redis.Redis, phone: str, otp: str) -> User:
+async def verify_otp(db: AsyncSession, r: TTLStore, phone: str, otp: str) -> User:
     settings = get_settings()
     attempts_key = OTP_ATTEMPTS_KEY.format(phone)
     attempts = int(await r.get(attempts_key) or 0)
