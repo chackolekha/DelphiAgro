@@ -163,7 +163,7 @@ flowchart LR
 | Scheduled jobs | APScheduler in a separate container running the same image, guarded by a Redis lock | Accept-timeout sweeps, auto-confirm, reconciliation |
 | Files | S3 private bucket, pre-signed URLs | Photos, invoices, KYC artefacts |
 | Notifications | FCM web push + SMS gateway | |
-| CI/CD | GitHub Actions → build Docker images → push to ECR → deploy to EC2 (SSM Run Command / CodeDeploy) | |
+| CI/CD | GitHub Actions → build Docker images → push to **Docker Hub** → deploy to EC2 (SSH + `docker compose pull/up`) | |
 | IaC | Terraform | Repeatable environments |
 
 ### 4.2 Backend layering (enforced per module)
@@ -449,19 +449,19 @@ machine and role (e.g. only the order's farmer can `dispatch`).
 | RDS PostgreSQL | `db.t4g.medium`, 50 GB gp3, backups 7 days, Multi-AZ when live |
 | ElastiCache Redis | `cache.t4g.micro` |
 | S3 + CloudFront | Frontend static hosting, produce photos |
-| ECR | Backend + frontend images |
+| Docker Hub | Backend + frontend images (registry of record) |
 | Route 53 | `api.<domain>`, `app.<domain>` |
 | CloudWatch | Logs/metrics; alarms → SNS (5xx rate, p95, CPU, RDS storage, failed webhooks) |
 
 **Low-cost dev/staging:** one `t3.small` EC2 running `docker compose`
 (api + postgres + redis + frontend/nginx, Let's Encrypt TLS). Same images as prod.
 
-### 9.2 CI/CD (GitHub Actions)
-1. On PR: backend (ruff, mypy, pytest + Testcontainers Postgres), frontend (eslint, tsc, vitest), Trivy scan.
-2. On merge to `main`: build Docker images tagged with git SHA → push to ECR → deploy to **staging** (SSM Run Command: pull + restart compose) → smoke tests.
-3. Manual approval → **production** rolling deploy (ASG instance refresh / CodeDeploy, ALB health gates). Rollback = redeploy previous SHA.
-4. Alembic migrations run on container start (backward-compatible only).
-5. Frontend: Vite build → S3 + CloudFront invalidation (or nginx container on EC2 for MVP).
+### 9.2 CI/CD (GitHub Actions) — Git → Docker Hub → AWS EC2
+1. On PR: backend (ruff, mypy, pytest vs Postgres+Redis service containers), frontend (tsc + vite build), Trivy scan.
+2. On merge to `main`: build backend + frontend images tagged `latest` + git SHA → push to **Docker Hub** (build-cache tags for speed).
+3. Deploy: SCP `docker-compose.prod.yml` to the EC2 host → SSH `docker login` → `docker compose pull` → `up -d` → smoke check `GET /health`. Rollback = `TAG=<previous-sha> docker compose up -d`.
+4. Alembic migrations run via the `migrate` service before `api` starts (backward-compatible only).
+5. Scale-out path (later): same images on an ASG behind the ALB — deploy becomes instance-refresh instead of SSH.
 
 ### 9.3 Operations
 - RDS automated snapshots + weekly manual; S3 versioning on KYC/invoice buckets.

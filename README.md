@@ -55,6 +55,41 @@ npm install
 npm run dev          # http://localhost:5173, proxies /api → :8000
 ```
 
+## Deployment — Git → Docker Hub → AWS EC2
+
+`.github/workflows/ci.yml` implements the full path on every push to `main`:
+
+1. **CI**: backend lint/typecheck/tests, frontend build (also runs on PRs).
+2. **Images**: builds `krishilink-backend` and `krishilink-frontend`, tags them
+   `latest` + git SHA, pushes to Docker Hub.
+3. **Deploy**: SCPs `docker-compose.prod.yml` to the EC2 host, then SSH
+   `docker compose pull && up -d` (migrations run via the `migrate` service
+   before the API starts), followed by a `/health` smoke check.
+4. **Rollback**: on the host, `TAG=<previous-sha> docker compose up -d`.
+
+### One-time EC2 host setup
+
+```bash
+# on the EC2 instance (Amazon Linux 2023 / Ubuntu)
+sudo dnf install -y docker && sudo systemctl enable --now docker
+sudo usermod -aG docker $USER        # re-login after this
+mkdir -p ~/krishilink && cd ~/krishilink
+cp .env.example .env                 # fill in real secrets; ENV=prod, OTP_DEV_ECHO=false
+```
+
+### GitHub secrets to set (repo → Settings → Secrets and variables → Actions)
+
+| Secret | Value |
+|---|---|
+| `DOCKERHUB_USERNAME` | Docker Hub username (used in image names) |
+| `DOCKERHUB_TOKEN` | Docker Hub access token (read+write) |
+| `EC2_HOST` | Public IP or DNS of the EC2 instance |
+| `EC2_USER` | SSH user, e.g. `ec2-user` / `ubuntu` |
+| `EC2_SSH_KEY` | Full private key (PEM) for that user |
+
+Inbound rules on the security group: `22` (your IP), `80` (world). The API is
+reached through the frontend's nginx proxy — no port 8000 exposure needed.
+
 ## Tests & checks
 
 ```bash
