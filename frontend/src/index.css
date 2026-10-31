@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-leaf-600 hover:bg-leaf-700 disabled:bg-gray-300 text-white rounded px-4 py-2 font-medium;
+  }
+  .btn-danger {
+    @apply bg-red-100 hover:bg-red-200 disabled:bg-gray-100 text-red-700 rounded px-4 py-2 font-medium;
+  }
+}
