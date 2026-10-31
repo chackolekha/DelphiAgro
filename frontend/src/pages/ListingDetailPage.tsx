@@ -28,7 +28,11 @@ export default function ListingDetailPage() {
       const detail = await api.post<OrderDetail>(
         "/orders",
         { items: [{ listing_id: listing.id, quantity: qty }] },
-        { "Idempotency-Key": crypto.randomUUID() },
+        {
+          "Idempotency-Key":
+            crypto.randomUUID?.() ??
+            `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        },
       );
       nav(`/orders/${detail.order.id}`);
     } catch (e) {
