@@ -112,7 +112,7 @@ jobs:
           cat > .env.deploy <<ENVEOF
           JWT_SECRET=$JWT_SECRET
           ENV=prod
-          OTP_DEV_ECHO=false
+          OTP_DEV_ECHO=true
           ADMIN_PHONE=$ADMIN_PHONE
           PAYMENTS_PROVIDER=${PAYMENTS_PROVIDER:-stub}
           RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID
