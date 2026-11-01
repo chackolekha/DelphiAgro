@@ -34,7 +34,7 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       <header className="bg-leaf-700 text-white">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
-          <Link to="/" className="font-bold text-lg">KrishiLink</Link>
+          <Link to="/" className="font-bold text-lg">Delphi Agro</Link>
           <nav className="flex gap-4 text-sm items-center">
             {links.map((l) => (
               <Link key={l.to} to={l.to} className="hover:underline">{l.label}</Link>

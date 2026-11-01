@@ -42,7 +42,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-leaf-50 p-4">
       <div className="bg-white rounded-xl shadow p-8 w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-leaf-700 mb-1">KrishiLink</h1>
+        <h1 className="text-2xl font-bold text-leaf-700 mb-1">Delphi Agro</h1>
         <p className="text-sm text-gray-500 mb-6">Farm to retail, direct.</p>
 
         {step === "phone" ? (

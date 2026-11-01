@@ -88,7 +88,7 @@ export default function KycPage() {
             onChange={(e) => setConsent(e.target.checked)}
             className="mt-1"
           />
-          I consent to KrishiLink verifying my identity and storing the submitted details for
+          I consent to Delphi Agro verifying my identity and storing the submitted details for
           review purposes.
         </label>
         <button

@@ -1,4 +1,4 @@
-# KrishiLink — Farmer → Retailer Order Management
+# Delphi Agro — Farmer → Retailer Order Management
 
 Direct-to-retailer marketplace for farm produce. See `BLUEPRINT.md` for the
 architecture, data model and delivery plan this code implements.
