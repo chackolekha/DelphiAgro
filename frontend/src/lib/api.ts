@@ -64,7 +64,10 @@ async function request<T>(path: string, init: RequestInit, retry = true): Promis
     try {
       const body = await res.json();
       code = body.code ?? code;
-      detail = body.detail ?? detail;
+      detail =
+        typeof body.detail === "string"
+          ? body.detail
+          : JSON.stringify(body.detail ?? res.statusText);
     } catch {
       /* non-JSON error */
     }
