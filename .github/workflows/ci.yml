@@ -125,6 +125,10 @@ jobs:
           DISPUTE_WINDOW_HOURS=48
           CORS_ORIGINS=$CORS_ORIGINS
           DEV_NO_AUTH=${DEV_NO_AUTH:-true}
+          # Also used by compose for image-name interpolation — keeps manual
+          # `docker compose` commands on the host working between deploys.
+          DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME
+          TAG=${{ github.sha }}
           ENVEOF
 
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST"
