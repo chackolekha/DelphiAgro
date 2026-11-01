@@ -110,6 +110,9 @@ jobs:
           # .env consumed by docker-compose.prod.yml (env_file) on the host.
           # DATABASE_URL is NOT here — it lives in ~/krishilink/db.env, created
           # once on the host, so the DB credential never touches CI/git.
+          # DOCKERHUB_USERNAME and TAG are also written so compose can
+          # interpolate image names for manual commands on the host.
+          # NOTE: no comments inside the heredoc — .env must be KEY=value only.
           cat > .env.deploy <<ENVEOF
           JWT_SECRET=$JWT_SECRET
           ENV=prod
@@ -125,8 +128,6 @@ jobs:
           DISPUTE_WINDOW_HOURS=48
           CORS_ORIGINS=$CORS_ORIGINS
           DEV_NO_AUTH=${DEV_NO_AUTH:-true}
-          # Also used by compose for image-name interpolation — keeps manual
-          # `docker compose` commands on the host working between deploys.
           DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME
           TAG=${{ github.sha }}
           ENVEOF
