@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { api, clearTokens } from "./api";
+import { api, clearTokens, hasToken } from "./api";
 import type { User } from "../types";
 
 interface AuthCtx {
@@ -16,8 +16,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshMe = async () => {
-    // Always ask the backend: in DEV_NO_AUTH mode /me returns the demo user
-    // even without a token; in prod a tokenless call 401s and user stays null.
+    if (!hasToken()) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
       setUser(await api.get<User>("/me"));
     } catch {
