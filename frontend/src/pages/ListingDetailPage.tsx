@@ -4,24 +4,6 @@ import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { Listing, OrderDetail } from "../types";
 
-function idempotencyKey(): string {
-  try {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-      return crypto.randomUUID();
-    }
-    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
-      const b = crypto.getRandomValues(new Uint8Array(16));
-      b[6] = (b[6] & 0x0f) | 0x40;
-      b[8] = (b[8] & 0x3f) | 0x80;
-      const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
-      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-    }
-  } catch {
-    /* fall through to non-crypto key */
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
-}
-
 export default function ListingDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -43,11 +25,9 @@ export default function ListingDetailPage() {
     setBusy(true);
     setError("");
     try {
-      const detail = await api.post<OrderDetail>(
-        "/orders",
-        { items: [{ listing_id: listing.id, quantity: qty }] },
-        { "Idempotency-Key": idempotencyKey() },
-      );
+      const detail = await api.post<OrderDetail>("/orders", {
+        items: [{ listing_id: listing.id, quantity: Number(qty) }],
+      });
       nav(`/orders/${detail.order.id}`);
     } catch (e) {
       console.error("place order failed", e);
