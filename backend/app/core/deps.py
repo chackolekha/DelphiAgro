@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.errors import AppError, forbidden
 from app.modules.common.enums import Role, UserStatus
@@ -14,12 +15,19 @@ from app.modules.users.models import User
 
 bearer = HTTPBearer(auto_error=False)
 
+# Seeded at startup when DEV_NO_AUTH=true; tokenless requests act as this user.
+DEMO_RETAILER_PHONE = "+910000000001"
+
 
 async def get_current_user(
     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     if creds is None:
+        if get_settings().dev_no_auth:
+            demo = await get_user_by_phone(db, DEMO_RETAILER_PHONE)
+            if demo is not None:
+                return demo
         raise AppError("UNAUTHORIZED", "Missing bearer token", 401)
     try:
         from app.core.security import decode_token

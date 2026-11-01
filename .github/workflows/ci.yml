@@ -101,6 +101,7 @@ jobs:
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+          DEV_NO_AUTH: ${{ secrets.DEV_NO_AUTH }}
         run: |
           mkdir -p ~/.ssh
           echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
@@ -123,6 +124,7 @@ jobs:
           PAYMENT_WINDOW_MIN=15
           DISPUTE_WINDOW_HOURS=48
           CORS_ORIGINS=$CORS_ORIGINS
+          DEV_NO_AUTH=${DEV_NO_AUTH:-true}
           ENVEOF
 
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST"

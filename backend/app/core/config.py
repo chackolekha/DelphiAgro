@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     otp_rate_limit_per_hour: int = 10
 
+    # Dev-demo only: tokenless requests act as a seeded verified retailer.
+    # MUST be false in prod.
+    dev_no_auth: bool = False
+
     platform_fee_pct: float = 0.05
     accept_window_hours: int = 12
     payment_window_min: int = 15

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import get_db
-from app.core.deps import get_user_by_phone
+from app.core.deps import DEMO_RETAILER_PHONE, get_user_by_phone
 from app.core.errors import register_exception_handlers
 from app.modules.admin.router import router as admin_router
 from app.modules.auth.router import router as auth_router
@@ -41,6 +41,21 @@ async def lifespan(app: FastAPI):
                 )
                 await db.commit()
                 log.info("Seeded admin user phone=%s", settings.admin_phone)
+    if settings.dev_no_auth:
+        from app.core.db import SessionLocal
+
+        async with SessionLocal() as db:
+            if await get_user_by_phone(db, DEMO_RETAILER_PHONE) is None:
+                db.add(
+                    User(
+                        phone=DEMO_RETAILER_PHONE,
+                        role=Role.RETAILER,
+                        status=UserStatus.VERIFIED,
+                        name="Demo Retailer",
+                    )
+                )
+                await db.commit()
+                log.info("Seeded demo retailer (DEV_NO_AUTH)")
     yield
 
 
