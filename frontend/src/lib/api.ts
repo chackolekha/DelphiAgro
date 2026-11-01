@@ -67,7 +67,17 @@ async function request<T>(path: string, init: RequestInit, retry = true): Promis
       detail =
         typeof body.detail === "string"
           ? body.detail
-          : JSON.stringify(body.detail ?? res.statusText);
+          : Array.isArray(body.detail)
+            ? body.detail
+                .map((d: { msg?: string; loc?: unknown[] }) =>
+                  d?.msg
+                    ? `${d.loc?.length ? `${d.loc[d.loc.length - 1]}: ` : ""}${d.msg}`
+                    : String(d),
+                )
+                .join("; ")
+            : String(
+                body.detail?.msg ?? body.detail?.message ?? body.detail ?? res.statusText,
+              );
     } catch {
       /* non-JSON error */
     }
