@@ -24,15 +24,12 @@ export default function ListingDetailPage() {
   const placeOrder = async () => {
     setBusy(true);
     setError("");
-    const payload = { items: [{ listing_id: listing.id, quantity: Number(qty) }] };
-    console.log("[placeOrder] click", { qty, payload, user });
     try {
-      console.log("[placeOrder] POST /api/v1/orders →", payload);
-      const detail = await api.post<OrderDetail>("/orders", payload);
-      console.log("[placeOrder] success", detail);
+      const detail = await api.post<OrderDetail>("/orders", {
+        items: [{ listing_id: listing.id, quantity: Number(qty) }],
+      });
       nav(`/orders/${detail.order.id}`);
     } catch (e) {
-      console.error("[placeOrder] failed:", e);
       setError(
         e instanceof ApiError
           ? e.message

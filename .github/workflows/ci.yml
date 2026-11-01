@@ -137,7 +137,8 @@ jobs:
             echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USERNAME' --password-stdin
             export DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME TAG=${{ github.sha }}
             docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose down --remove-orphans
+            docker compose up -d
             docker image prune -f
           "
 
